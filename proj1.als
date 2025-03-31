@@ -125,21 +125,41 @@ pred emptyTrash {
 
 -- createMailbox
 pred createMailbox [mb: Mailbox] {
+  -- pre-conditions
+  mb not in Mail.uboxes
+  mb not in sboxes
+  no mb.messages
 
-
+  -- post-conditions
+  Mail.uboxes' = Mail.uboxes + mb
   Mail.op' = CMB
+
+  -- frame
+  noStatusChange[Message]
+  noMessageChange[Mailbox]
 }
 
 -- deleteMailbox
 pred deleteMailbox [mb: Mailbox] {
+  -- pre-conditions
+  mb in Mail.uboxes
+  mb not in sboxes
 
-
+  -- post-conditions
+  Mail.uboxes' = Mail.uboxes - mb
+  all msg : mb.messages | msg.status' = Purged
   Mail.op' = DMB
+
+  -- frame
+  noStatusChange[Message - mb.messages]
+  noMessageChange[Mailbox]
 }
 
 -- noOp
 pred noOp {
-
+  noStatusChange[Message]
+  noMessageChange[Mailbox]
+  noUserboxChange
 
   Mail.op' = none 
 }
@@ -150,18 +170,19 @@ pred noOp {
 
 pred Init {
   -- There exist no active or purged messages anywhere
-
+  no Message.status & Active
+  no Message.status & Purged
 
   -- The system mailboxes are all distinct
-
+  -- ?????????????????
+  all mb1, mb2 : sboxes | mb1 != mb2 implies no mb1.messages & mb2.messages
 
   -- All mailboxes anywhere are empty
-
+  all mb: Mailbox | no mb.messages
 
   -- The set of user-created mailboxes is empty
+  no Mail.uboxes
 
-
-  -- [Keep this tracking constraint intact]
   -- no operator generates the initial state
   Mail.op = none
 }
