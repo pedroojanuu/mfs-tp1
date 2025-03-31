@@ -84,6 +84,24 @@ pred createMessage [m: Message] {
 
 -- moveMessage
 pred moveMessage [m: Message, mb: Mailbox] {
+  -- pre-conditions
+  -- message should be in a mailbox
+  some oldMb: Mailbox | m in oldMb.messages
+  -- new mailbox must exist
+  mb in (Mail.uboxes + sboxes)
+  -- new mailbox is not old mailbox
+  all oldMb: Mailbox | m in oldMb.messages implies oldMb != mb
+  
+  -- post-conditions
+  -- remove message from old mailbox
+  all oldMb: Mailbox | m in oldMb.messages implies m not in oldMb.messages'
+  -- add message to new mailbox
+  m in mb.messages'
+  
+  -- frame conditions
+  noStatusChange[Message]
+  noMessageChange[sboxes + Mail.uboxes - mb]
+  noUserboxChange
 
   Mail.op' = MM
 }
@@ -91,7 +109,22 @@ pred moveMessage [m: Message, mb: Mailbox] {
 
 -- deleteMessage
 pred deleteMessage [m: Message] {
+  -- pre-conditions
+  -- message should be in a mailbox
+  some oldMb: Mailbox | m in oldMb.messages
+  -- message must not be deleted already
+  m not in Mail.trash.messages
+  
+  -- post-conditions
+  -- remove message from old mailbox
+  all oldMb: Mailbox | m in oldMb.messages implies m not in oldMb.messages'
+  -- add message to trash
+  m in Mail.trash.messages'
 
+  -- frame conditions
+  noStatusChange[m]
+  noMessageChange [sboxes + Mail.uboxes - Mail.trash]
+  noUserboxChange
 
   Mail.op' = DM
 }
@@ -117,7 +150,22 @@ pred getMessage [m: Message] {
 */
 -- emptyTrash
 pred emptyTrash {
-
+  -- pre-conditions
+  -- trash is not empty
+  some Mail.trash.messages
+  
+  -- post-conditions
+  -- mark all messages in trash as purged
+  all m: Message | m in Mail.trash.messages implies m.status' = Purged
+  -- remove all messages in trash from system
+  all m: Message | m in Mail.trash.messages implies m not in Object'
+  -- trash is emptied
+  Mail.trash.messages' = none
+  
+  -- frame conditions
+  noStatusChange [Message - Mail.trash.messages]
+  noMessageChange [sboxes + Mail.uboxes - Mail.trash]
+  noUserboxChange
 
   Mail.op' = ET
 }
