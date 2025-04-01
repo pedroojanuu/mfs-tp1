@@ -75,11 +75,24 @@ pred noUserboxChange {
 */
 
 
--- createMessage 
+/**
+  * This predicate models the creation of a new message in the system.
+  * Arguments:
+  *   m: Message - The message to be created.
+  */
 pred createMessage [m: Message] {
+  -- Preconditions
+  m.status = Fresh
 
-
+  -- Postconditions
+  Mail.drafts.messages' = Mail.drafts.messages + m
+  m.status' = Active
   Mail.op' = CM
+
+  -- Frame conditions
+  noStatusChange[Message - m]
+  noMessageChange[Mailbox - Mail.drafts]
+  noUserboxChange
 }
 
 -- moveMessage
@@ -129,18 +142,44 @@ pred deleteMessage [m: Message] {
   Mail.op' = DM
 }
 
--- sendMessage
+/**
+  * This predicate models sending a message from the drafts mailbox to the sent mailbox.
+  * Arguments:
+  *   m: Message - The message to be sent.
+  */
 pred sendMessage [m: Message] {
+  -- Preconditions
+  m in Mail.drafts.messages
 
-
+  -- Postconditions
+  Mail.drafts.messages' = Mail.drafts.messages - m
+  Mail.sent.messages' = Mail.sent.messages + m
   Mail.op' = SM
+
+  -- Frame conditions
+  noStatusChange[Message]
+  noMessageChange[Mailbox - (Mail.drafts + Mail.sent)]
+  noUserboxChange
 }
 
--- getMessage 
+/**
+  * This predicate models receiving an external message into the inbox.
+  * Arguments:
+  *   m: Message - The external message to be received.
+  */
 pred getMessage [m: Message] {
+  -- Preconditions
+  m.status = External
 
-
+  -- Postconditions
+  Mail.inbox.messages' = Mail.inbox.messages + m
+  m.status' = Active
   Mail.op' = GM
+
+  -- Frame conditions
+  noStatusChange[Message - m]
+  noMessageChange[Mailbox - Mail.inbox]
+  noUserboxChange
 }
 
 
