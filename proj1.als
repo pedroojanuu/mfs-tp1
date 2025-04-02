@@ -311,7 +311,7 @@ fact System {
 }
 
 
-run {} for 10
+--run {} for 10
 
 ---------------------
 -- Sanity check runs
@@ -319,46 +319,46 @@ run {} for 10
 
 pred p1 {
   -- Eventually a message becomes active
-
+  eventually some m: Message | m.status = Active
 }
-run p1 for 1 but 8 Object
+--run p1 for 1 but 8 Object
 
 pred p2 {
   -- The inbox contains more than one message at some point
-
+  eventually #Mail.inbox.messages > 1
 }
-run p2 for 1 but 8 Object
+--run p2 for 1 but 8 Object
 
 pred p3 {
   -- The trash mailbox eventually contains messages and
   -- becomes empty some time later
-
+  eventually (some Mail.trash.messages and after eventually no Mail.trash.messages)
 }
-run p3 for 1 but 8 Object
+--run p3 for 1 but 8 Object
 
 pred p4 {
   -- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
-
+  eventually (some m: Mail.drafts.messages | after eventually m in Mail.sent.messages)
 }
-run p4 for 1 but 8 Object
+--run p4 for 1 but 8 Object
 
 pred p5 {
   -- Eventually there is a user mailbox with messages in it
 
 }
-run p5 for 1 but 8 Object 
+--run p5 for 1 but 8 Object 
 
 pred p6 {
   -- Eventually the inbox gets two messages in a row from outside
 
 }
-run p6 for 1 but 8 Object
+--run p6 for 1 but 8 Object
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
 
 }
-run p7 for 1 but 8 Object
+--run p7 for 1 but 8 Object
 
 pred p8 {
   -- Eventually the inbox has messages
@@ -366,20 +366,20 @@ pred p8 {
   -- Every message in the inbox at any point is eventually removed 
 
 }
-run p8 for 1 but 8 Object
+--run p8 for 1 but 8 Object
 
 pred p9 {
   -- The trash mail box is emptied of its messages eventually
 
 }
-run p9 for 1 but 8 Object
+--run p9 for 1 but 8 Object
 
 pred p10 {
   -- Eventually an external message arrives and 
   -- after that nothing happens anymore
-
+  eventually (some m: Message | m.status = External and after always noOp)
 }
-run p10 for 1 but 8 Object
+--run p10 for 1 but 8 Object
 
 
 
@@ -388,103 +388,103 @@ run p10 for 1 but 8 Object
 --------------------
 
 assert v1 {
---  Every active message is in one of the app's mailboxes 
-
+  -- Every active message is in one of the app's mailboxes 
+  always (all m: Message | m.status = Active implies some mb: Mailbox | m in mb.messages)
 }
-check v1 for 5 but 11 Object
+--check v1 for 5 but 11 Object
 
  
 assert v2 {
---  Inactive messages are in no mailboxes at all
-
+  -- Inactive messages are in no mailboxes at all
+  always (all m: Message | m.status != Active implies no mb: Mailbox | m in mb.messages)
 }
-check v2 for 5 but 11 Object
+--check v2 for 5 but 11 Object
 
 assert v3 {
 -- Each of the user-created mailboxes differs from the predefined mailboxes
 
 }
-check v3 for 5 but 11 Object
+--check v3 for 5 but 11 Object
 
 assert v4 {
 -- Every active message was once external or fresh.
 
 }
-check v4 for 5 but 11 Object
+--check v4 for 5 but 11 Object
 
 assert v5 {
 -- Every user-created mailbox starts empty.
 
 }
-check v5 for 5 but 11 Object
+--check v5 for 5 but 11 Object
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
 
 }
-check v6 for 5 but 11 Object
+--check v6 for 5 but 11 Object
 
 assert v7 {
 -- Every sent message is sent from the draft mailbox 
 
 }
-check v7 for 5 but 11 Object
+--check v7 for 5 but 11 Object
 
 assert v8 {
 -- The app's mailboxes contain only active messages
 
 }
-check v8 for 5 but 11 Object
+--check v8 for 5 but 11 Object
 
 assert v9 {
--- Every received message passes through the inbox
-
+  -- Every received message passes through the inbox
+  always (all m: Message | m.status = External implies (eventually some mb: Mailbox | m in mb.messages))
 }
-check v9 for 5 but 11 Object
+--check v9 for 5 but 11 Object
 
 assert v10 {
--- A purged message is purged forever
-
+  -- A purged message is purged forever
+  always (all m: Message | m.status = Purged implies always m.status = Purged)
 }
-check v10 for 5 but 11 Object
+--check v10 for 5 but 11 Object
 
 assert v11 {
--- No messages in the system can ever (re)acquire External status
-
+  -- No messages in the system can ever (re)acquire External status
+  always (all m: Message | m.status != External implies always m.status != External)
 }
-check v11 for 5 but 11 Object
+--check v11 for 5 but 11 Object
 
 assert v12 {
 -- The trash mailbox starts empty and stays so until a message is deleted, if any
 
 }
-check v12 for 5 but 11 Object
+--check v12 for 5 but 11 Object
 
 assert v13 {
 -- To purge an active message one must first delete the message 
 -- or delete the mailbox it is in.
 
 }
-check v13 for 5 but 11 Object
+--check v13 for 5 but 11 Object
 
 assert v14 {
 -- Every message in the trash mailbox had been previously deleted
 
 }
-check v14 for 5 but 11 Object
+--check v14 for 5 but 11 Object
 
 assert v15 {
 -- Every message in a user-created mailbox ultimately comes from a system mailbox.
 
 }
-check v15 for 5 but 11 Object
+--check v15 for 5 but 11 Object
 
 assert v16 {
 -- A purged message that was never in the trash mailbox must have been 
 -- in a user mailbox that was later deleted
 
 }
-check v16 for 5 but 11 Object
+--check v16 for 5 but 11 Object
 
 
 ----------------------
@@ -496,27 +496,27 @@ check v16 for 5 but 11 Object
 assert i1 {
 
 }
-check i1 for 5 but 11 Object
+--check i1 for 5 but 11 Object
 
 -- A message that was removed from the inbox may later reappear there.
--- Negated into:
+-- Negated into: a message that was removed from the inbox must NEVER reappear there.
 assert i2 {
-
+  always (some m: Message | (historically m in Mail.inbox.messages and (deleteMessage[m] or moveMessage[m, sboxes - Mail.inbox])) implies always m not in Mail.inbox.messages)
 }
-check i2 for 5 but 11 Object
+--check i2 for 5 but 11 Object
 
 -- A deleted message may go back to the mailbox it was deleted from.
 -- Negated into:
 assert i3 {
 
 }
-check i3 for 5 but 11 Object
+--check i3 for 5 but 11 Object
 
 -- Some external messages may never be received
 -- Negated into:
 assert i4 {
 
 }
-check i4 for 5 but 11 Object
+--check i4 for 5 but 11 Object
 
 
