@@ -336,21 +336,27 @@ pred p3 {
 }
 run p3 for 1 but 8 Object
 
+-- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
 pred p4 {
-  -- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
-
+  eventually some m: Message | m in Mail.drafts.messages and after (m in Mail.sent.messages)
 }
 run p4 for 1 but 8 Object
 
+-- Eventually there is a user mailbox with messages in it
 pred p5 {
-  -- Eventually there is a user mailbox with messages in it
-
+  eventually some mb: Mailbox | mb in Mail.uboxes and some mb.messages
 }
 run p5 for 1 but 8 Object 
 
+-- Eventually the inbox gets two messages in a row from outside
+/*
+ We assumed "gets two messages in a row from outside" means that the inbox receives
+ a message from outside in one state and then receives another message from outside
+ in the next state.
+*/
 pred p6 {
-  -- Eventually the inbox gets two messages in a row from outside
-
+  eventually some m1: Message, m2: Message | 
+    m1 != m2 and getMessage[m1] and after (getMessage[m2])
 }
 run p6 for 1 but 8 Object
 
