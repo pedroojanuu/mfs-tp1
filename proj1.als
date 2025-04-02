@@ -388,103 +388,103 @@ pred p10 {
 --------------------
 
 assert v1 {
---  Every active message is in one of the app's mailboxes 
-
+  -- Every active message is in one of the app's mailboxes 
+  always (all m: Message | m.status = Active implies some mb: Mailbox | m in mb.messages)
 }
-check v1 for 5 but 11 Object
+--check v1 for 5 but 11 Object
 
  
 assert v2 {
---  Inactive messages are in no mailboxes at all
-
+  -- Inactive messages are in no mailboxes at all
+  always (all m: Message | m.status != Active implies no mb: Mailbox | m in mb.messages)
 }
-check v2 for 5 but 11 Object
+--check v2 for 5 but 11 Object
 
 assert v3 {
 -- Each of the user-created mailboxes differs from the predefined mailboxes
 
 }
-check v3 for 5 but 11 Object
+--check v3 for 5 but 11 Object
 
 assert v4 {
 -- Every active message was once external or fresh.
 
 }
-check v4 for 5 but 11 Object
+--check v4 for 5 but 11 Object
 
 assert v5 {
 -- Every user-created mailbox starts empty.
 
 }
-check v5 for 5 but 11 Object
+--check v5 for 5 but 11 Object
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
 
 }
-check v6 for 5 but 11 Object
+--check v6 for 5 but 11 Object
 
 assert v7 {
 -- Every sent message is sent from the draft mailbox 
 
 }
-check v7 for 5 but 11 Object
+--check v7 for 5 but 11 Object
 
 assert v8 {
 -- The app's mailboxes contain only active messages
 
 }
-check v8 for 5 but 11 Object
+--check v8 for 5 but 11 Object
 
 assert v9 {
--- Every received message passes through the inbox
-
+  -- Every received message passes through the inbox
+  always (all m: Message | m.status = External implies (eventually some mb: Mailbox | m in mb.messages))
 }
-check v9 for 5 but 11 Object
+--check v9 for 5 but 11 Object
 
 assert v10 {
--- A purged message is purged forever
-
+  -- A purged message is purged forever
+  always (all m: Message | m.status = Purged implies always m.status = Purged)
 }
-check v10 for 5 but 11 Object
+--check v10 for 5 but 11 Object
 
 assert v11 {
--- No messages in the system can ever (re)acquire External status
-
+  -- No messages in the system can ever (re)acquire External status
+  always (all m: Message | m.status != External implies always m.status != External)
 }
-check v11 for 5 but 11 Object
+--check v11 for 5 but 11 Object
 
 assert v12 {
 -- The trash mailbox starts empty and stays so until a message is deleted, if any
 
 }
-check v12 for 5 but 11 Object
+--check v12 for 5 but 11 Object
 
 assert v13 {
 -- To purge an active message one must first delete the message 
 -- or delete the mailbox it is in.
 
 }
-check v13 for 5 but 11 Object
+--check v13 for 5 but 11 Object
 
 assert v14 {
 -- Every message in the trash mailbox had been previously deleted
 
 }
-check v14 for 5 but 11 Object
+--check v14 for 5 but 11 Object
 
 assert v15 {
 -- Every message in a user-created mailbox ultimately comes from a system mailbox.
 
 }
-check v15 for 5 but 11 Object
+--check v15 for 5 but 11 Object
 
 assert v16 {
 -- A purged message that was never in the trash mailbox must have been 
 -- in a user mailbox that was later deleted
 
 }
-check v16 for 5 but 11 Object
+--check v16 for 5 but 11 Object
 
 
 ----------------------
@@ -496,27 +496,27 @@ check v16 for 5 but 11 Object
 assert i1 {
 
 }
-check i1 for 5 but 11 Object
+--check i1 for 5 but 11 Object
 
 -- A message that was removed from the inbox may later reappear there.
 -- Negated into:
 assert i2 {
 
 }
-check i2 for 5 but 11 Object
+--check i2 for 5 but 11 Object
 
 -- A deleted message may go back to the mailbox it was deleted from.
 -- Negated into:
 assert i3 {
 
 }
-check i3 for 5 but 11 Object
+--check i3 for 5 but 11 Object
 
 -- Some external messages may never be received
 -- Negated into:
 assert i4 {
 
 }
-check i4 for 5 but 11 Object
+--check i4 for 5 but 11 Object
 
 
