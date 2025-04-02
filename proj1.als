@@ -499,9 +499,9 @@ assert i1 {
 --check i1 for 5 but 11 Object
 
 -- A message that was removed from the inbox may later reappear there.
--- Negated into:
+-- Negated into: a message that was removed from the inbox must NEVER reappear there.
 assert i2 {
-
+  always (some m: Message | (historically m in Mail.inbox.messages and (deleteMessage[m] or moveMessage[m, sboxes - Mail.inbox])) implies always m not in Mail.inbox.messages)
 }
 --check i2 for 5 but 11 Object
 
