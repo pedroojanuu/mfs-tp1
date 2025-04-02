@@ -311,7 +311,7 @@ fact System {
 }
 
 
-run {} for 10
+--run {} for 10
 
 ---------------------
 -- Sanity check runs
@@ -319,46 +319,46 @@ run {} for 10
 
 pred p1 {
   -- Eventually a message becomes active
-
+  eventually some m: Message | m.status = Active
 }
-run p1 for 1 but 8 Object
+--run p1 for 1 but 8 Object
 
 pred p2 {
   -- The inbox contains more than one message at some point
-
+  eventually #Mail.inbox.messages > 1
 }
-run p2 for 1 but 8 Object
+--run p2 for 1 but 8 Object
 
 pred p3 {
   -- The trash mailbox eventually contains messages and
   -- becomes empty some time later
-
+  eventually (some Mail.trash.messages and after eventually no Mail.trash.messages)
 }
-run p3 for 1 but 8 Object
+--run p3 for 1 but 8 Object
 
 pred p4 {
   -- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
-
+  eventually (some m: Mail.drafts.messages | after eventually m in Mail.sent.messages)
 }
-run p4 for 1 but 8 Object
+--run p4 for 1 but 8 Object
 
 pred p5 {
   -- Eventually there is a user mailbox with messages in it
 
 }
-run p5 for 1 but 8 Object 
+--run p5 for 1 but 8 Object 
 
 pred p6 {
   -- Eventually the inbox gets two messages in a row from outside
 
 }
-run p6 for 1 but 8 Object
+--run p6 for 1 but 8 Object
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
 
 }
-run p7 for 1 but 8 Object
+--run p7 for 1 but 8 Object
 
 pred p8 {
   -- Eventually the inbox has messages
@@ -366,20 +366,20 @@ pred p8 {
   -- Every message in the inbox at any point is eventually removed 
 
 }
-run p8 for 1 but 8 Object
+--run p8 for 1 but 8 Object
 
 pred p9 {
   -- The trash mail box is emptied of its messages eventually
 
 }
-run p9 for 1 but 8 Object
+--run p9 for 1 but 8 Object
 
 pred p10 {
   -- Eventually an external message arrives and 
   -- after that nothing happens anymore
-
+  eventually (some m: Message | m.status = External and after always noOp)
 }
-run p10 for 1 but 8 Object
+--run p10 for 1 but 8 Object
 
 
 
