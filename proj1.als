@@ -362,7 +362,8 @@ pred p5 {
 
 -- Eventually the inbox gets two messages in a row from outside
 /*
- We assumed "gets two messages in a row from outside" means that the inbox receives
+ Note:
+ We considered that "gets two messages in a row from outside" means the inbox receives
  a message from outside in one state and then receives another message from outside
  in the next state.
 */
@@ -539,19 +540,16 @@ assert i2 {
 -- Negated into:
 -- A deleted message can never go back to the mailbox it was deleted from.
 
+-- Note:
 -- We considered a deleted message to be a message that is in the trash mailbox,
 -- not a purged message.
 
 -- Original assertion:
 -- some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages and eventually (m in box.messages))
-
-// run { eventually (some m: Message | some mb: Mailbox | moveMessage [m, mb])} for 5 but 11 Object
-
 assert i3 {
-  always no (Mail.sent.messages)
-  // (some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages implies always (m not in box.messages)))
-  // or
-  // (always no Mail.trash.messages)
+  (some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages implies always (m not in box.messages)))
+  or
+  (always no Mail.trash.messages)
 }
 // check i3 for 5 but 11 Object
 
