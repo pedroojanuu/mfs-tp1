@@ -35,6 +35,13 @@ one sig Mail {
   var uboxes: set Mailbox,
 
   var op: lone Operator -- added for tracking purposes only
+}{
+  no (inbox & drafts)
+  no (inbox & trash)
+  no (inbox & sent)
+  no (drafts & trash)
+  no (drafts & sent)
+  no (trash & sent)
 }
 
 -- added for convenience, to track the operators applied during 
@@ -44,6 +51,11 @@ enum Operator {CMB, DMB, CM, GM, SM, DM, MM, ET}
 -- Since we have only one Mail app, it is convenient to have
 -- a global shorthand for its system mailboxes
 fun sboxes : set Mailbox { Mail.inbox + Mail.drafts + Mail.trash + Mail.sent }
+
+-- Returns the mailbox where a message is located
+fun mailBoxOf[m: Message] : Mailbox {
+  {mb: Mailbox | m in mb.messages}
+}
 
 ------------------------------
 -- Frame condition predicates
@@ -113,7 +125,7 @@ pred moveMessage [m: Message, mb: Mailbox] {
   
   -- frame conditions
   noStatusChange[Message]
-  noMessageChange[sboxes + Mail.uboxes - mb]
+  noMessageChange[Mailbox - mb]
   noUserboxChange
 
   Mail.op' = MM
@@ -136,7 +148,7 @@ pred deleteMessage [m: Message] {
 
   -- frame conditions
   noStatusChange[m]
-  noMessageChange [sboxes + Mail.uboxes - Mail.trash]
+  noMessageChange [Mailbox - Mail.trash]
   noUserboxChange
 
   Mail.op' = DM
@@ -203,7 +215,7 @@ pred emptyTrash {
   
   -- frame conditions
   noStatusChange [Message - Mail.trash.messages]
-  noMessageChange [sboxes + Mail.uboxes - Mail.trash]
+  noMessageChange [Mailbox - Mail.trash]
   noUserboxChange
 
   Mail.op' = ET
@@ -336,29 +348,36 @@ pred p3 {
 }
 --run p3 for 1 but 8 Object
 
+-- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
 pred p4 {
-  -- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
-  eventually (some m: Mail.drafts.messages | after eventually m in Mail.sent.messages)
+  eventually some m: Message | m in Mail.drafts.messages and after (m in Mail.sent.messages)
 }
---run p4 for 1 but 8 Object
+run p4 for 1 but 8 Object
 
+-- Eventually there is a user mailbox with messages in it
 pred p5 {
-  -- Eventually there is a user mailbox with messages in it
-
+  eventually (some Mail.uboxes.messages)
 }
---run p5 for 1 but 8 Object 
+//run p5 for 1 but 8 Object 
 
+-- Eventually the inbox gets two messages in a row from outside
+/*
+ Note:
+ We considered that "gets two messages in a row from outside" means the inbox receives
+ a message from outside in one state and then receives another message from outside
+ in the next state.
+*/
 pred p6 {
-  -- Eventually the inbox gets two messages in a row from outside
-
+  eventually some m1: Message, m2: Message | 
+    m1 != m2 and getMessage[m1] and after (getMessage[m2])
 }
---run p6 for 1 but 8 Object
+// run p6 for 1 but 8 Object
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
 
 }
---run p7 for 1 but 8 Object
+// run p7 for 1 but 8 Object
 
 pred p8 {
   -- Eventually the inbox has messages
@@ -366,20 +385,20 @@ pred p8 {
   -- Every message in the inbox at any point is eventually removed 
 
 }
---run p8 for 1 but 8 Object
+// run p8 for 1 but 8 Object
 
 pred p9 {
   -- The trash mail box is emptied of its messages eventually
 
 }
---run p9 for 1 but 8 Object
+// run p9 for 1 but 8 Object
 
 pred p10 {
   -- Eventually an external message arrives and 
   -- after that nothing happens anymore
   eventually (some m: Message | m.status = External and after always noOp)
 }
---run p10 for 1 but 8 Object
+// run p10 for 1 but 8 Object
 
 
 
@@ -391,30 +410,30 @@ assert v1 {
   -- Every active message is in one of the app's mailboxes 
   always (all m: Message | m.status = Active implies some mb: Mailbox | m in mb.messages)
 }
---check v1 for 5 but 11 Object
+// check v1 for 5 but 11 Object
 
  
 assert v2 {
   -- Inactive messages are in no mailboxes at all
   always (all m: Message | m.status != Active implies no mb: Mailbox | m in mb.messages)
 }
---check v2 for 5 but 11 Object
+// check v2 for 5 but 11 Object
 
-assert v3 {
 -- Each of the user-created mailboxes differs from the predefined mailboxes
-
+assert v3 {
+  always no (Mail.uboxes & sboxes)
 }
 --check v3 for 5 but 11 Object
 
-assert v4 {
 -- Every active message was once external or fresh.
-
+assert v4 {
+  always all m: Message | m.status = Active implies once (m.status = Fresh or m.status = External)
 }
 --check v4 for 5 but 11 Object
 
-assert v5 {
 -- Every user-created mailbox starts empty.
-
+assert v5 {
+  always all u: Mail.uboxes | once (historically no u.messages)
 }
 --check v5 for 5 but 11 Object
 
@@ -454,22 +473,34 @@ assert v11 {
 }
 --check v11 for 5 but 11 Object
 
-assert v12 {
 -- The trash mailbox starts empty and stays so until a message is deleted, if any
-
+assert v12 {
+  always (
+     (no Mail.trash.messages until some m: Message | deleteMessage[m])
+  )
+  or
+  always (no Mail.trash.messages)
 }
 --check v12 for 5 but 11 Object
 
-assert v13 {
 -- To purge an active message one must first delete the message 
 -- or delete the mailbox it is in.
-
+assert v13 {
+  always (
+    all m: Message | (
+      once m.status = Active and m.status = Purged
+    ) implies (
+      once deleteMessage[m] 
+      or 
+      once deleteMailbox[mailBoxOf[m]]
+    )
+  )
 }
 --check v13 for 5 but 11 Object
 
-assert v14 {
 -- Every message in the trash mailbox had been previously deleted
-
+assert v14 {
+  always (all m: Mail.trash.messages | (once deleteMessage[m]))
 }
 --check v14 for 5 but 11 Object
 
@@ -507,8 +538,18 @@ assert i2 {
 
 -- A deleted message may go back to the mailbox it was deleted from.
 -- Negated into:
-assert i3 {
+-- A deleted message can never go back to the mailbox it was deleted from.
 
+-- Note:
+-- We considered a deleted message to be a message that is in the trash mailbox,
+-- not a purged message.
+
+-- Original assertion:
+-- some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages and eventually (m in box.messages))
+assert i3 {
+  (some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages implies always (m not in box.messages)))
+  or
+  (always no Mail.trash.messages)
 }
 --check i3 for 5 but 11 Object
 
