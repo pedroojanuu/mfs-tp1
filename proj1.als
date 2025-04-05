@@ -352,13 +352,13 @@ pred p3 {
 pred p4 {
   eventually some m: Message | m in Mail.drafts.messages and after (m in Mail.sent.messages)
 }
-run p4 for 1 but 8 Object
+--run p4 for 1 but 8 Object
 
 -- Eventually there is a user mailbox with messages in it
 pred p5 {
   eventually (some Mail.uboxes.messages)
 }
-//run p5 for 1 but 8 Object 
+--run p5 for 1 but 8 Object 
 
 -- Eventually the inbox gets two messages in a row from outside
 /*
