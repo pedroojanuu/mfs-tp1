@@ -94,11 +94,11 @@ pred noUserboxChange {
   */
 pred createMessage [m: Message] {
   -- Preconditions
-  m.status = Fresh
+  m.status = External
 
   -- Postconditions
   Mail.drafts.messages' = Mail.drafts.messages + m
-  m.status' = Active
+  m.status' = Fresh
   Mail.op' = CM
 
   -- Frame conditions
@@ -110,6 +110,8 @@ pred createMessage [m: Message] {
 -- moveMessage
 pred moveMessage [m: Message, mb: Mailbox] {
   -- pre-conditions
+  -- message should be active
+  m.status = Active
   -- message should be in a mailbox
   some oldMb: Mailbox | m in oldMb.messages
   -- new mailbox must exist
@@ -125,12 +127,11 @@ pred moveMessage [m: Message, mb: Mailbox] {
   
   -- frame conditions
   noStatusChange[Message]
-  noMessageChange[Mailbox - mb]
+  noMessageChange[Mailbox - mb - mailBoxOf[m]]
   noUserboxChange
 
   Mail.op' = MM
 }
-
 
 -- deleteMessage
 pred deleteMessage [m: Message] {
@@ -161,9 +162,11 @@ pred deleteMessage [m: Message] {
   */
 pred sendMessage [m: Message] {
   -- Preconditions
+  m.status = Fresh
   m in Mail.drafts.messages
 
   -- Postconditions
+  m.status' = Active
   Mail.drafts.messages' = Mail.drafts.messages - m
   Mail.sent.messages' = Mail.sent.messages + m
   Mail.op' = SM
@@ -375,7 +378,7 @@ pred p6 {
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
-  eventually some m: Mailbox | m in Mail.‌uboxes and after m not in Mail.‌uboxes
+  eventually some m: Mailbox | m in Mail.uboxes and after m not in Mail.uboxes
 }
 // run p7 for 1 but 8 Object
 
@@ -439,16 +442,16 @@ assert v5 {
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
-  all m: Mailbox | eventually (m in Mail.uboxes) implies
-      always (m in Mail.uboxes) or eventually (not m in Mail.uboxes)
+  always (all m: Mailbox | (m in Mail.uboxes) implies
+      always (m in Mail.uboxes) or (m in Mail.uboxes until deleteMailbox[m]))
 }
---check v6 for 5 but 11 Object
+// check v6 for 5 but 11 Object
 
 assert v7 {
 -- Every sent message is sent from the draft mailbox 
-  always all m: Message | m in Mail.sent.messages implies prev[m in Mail.drafts.messages]
+  always (all m: Message | (m in Mail.sent.messages and sendMessage[m]) implies once (m in Mail.drafts.messages))
 }
---check v7 for 5 but 11 Object
+// check v7 for 5 but 11 Object
 
 assert v8 {
 -- The app's mailboxes contain only active messages
@@ -548,7 +551,7 @@ assert i2 {
 -- Original assertion:
 -- some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages and eventually (m in box.messages))
 assert i3 {
-  (some m: Message | let box = mailBoxOf[m] | eventually (m in Mail.trash.messages implies always (m not in box.messages)))
+  always (all m: Message | let box = mailBoxOf[m] | m in Mail.trash.messages implies always (m not in box.messages))
   or
   (always no Mail.trash.messages)
 }
