@@ -375,21 +375,21 @@ pred p6 {
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
-
+  eventually some m: Mailbox | m in Mail.‌uboxes and after m not in Mail.‌uboxes
 }
 // run p7 for 1 but 8 Object
 
 pred p8 {
   -- Eventually the inbox has messages
-
+  eventually some Mail.inbox.messages
   -- Every message in the inbox at any point is eventually removed 
-
+  always all m: Message | m in Mail.inbox.messages implies eventually m not in Mail.inbox.messages
 }
 // run p8 for 1 but 8 Object
 
 pred p9 {
   -- The trash mail box is emptied of its messages eventually
-
+  eventually no Mail.trash.messages
 }
 // run p9 for 1 but 8 Object
 
@@ -439,19 +439,20 @@ assert v5 {
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
-
+  all m: Mailbox | eventually (m in Mail.uboxes) implies
+      always (m in Mail.uboxes) or eventually (not m in Mail.uboxes)
 }
 --check v6 for 5 but 11 Object
 
 assert v7 {
 -- Every sent message is sent from the draft mailbox 
-
+  always all m: Message | m in Mail.sent.messages implies prev[m in Mail.drafts.messages]
 }
 --check v7 for 5 but 11 Object
 
 assert v8 {
 -- The app's mailboxes contain only active messages
-
+  always all m: Message | (some mb: Mailbox | m in mb.messages) => m.status = Active
 }
 --check v8 for 5 but 11 Object
 
@@ -523,9 +524,9 @@ assert v16 {
 ----------------------
 
 -- It is possible for messages to stay in the inbox indefinitely
--- Negated into: 
+-- Negated into: it's not possible for a message to stay in the inbox indefinetely
 assert i1 {
-
+  all m: Message | always (m in Mail.inbox.messages implies eventually (m not in Mail.inbox.messages))
 }
 --check i1 for 5 but 11 Object
 
@@ -554,9 +555,9 @@ assert i3 {
 --check i3 for 5 but 11 Object
 
 -- Some external messages may never be received
--- Negated into:
+-- Negated into: all external message are eventually received
 assert i4 {
-
+  all m: Message | always (m.status = External implies eventually (m in Mail.inbox.messages))
 }
 --check i4 for 5 but 11 Object
 
