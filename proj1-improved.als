@@ -17,7 +17,11 @@ enum Status {External, Fresh, Active, Purged, Scheduled}
 abstract sig Object {}
 
 sig Message extends Object {
-  var status: lone Status
+  var status: lone Status,
+  var timeToSend: lone Int
+}{
+  some timeToSend <=> status = Scheduled
+  timeToSend >= 0
 }
 
 sig Mailbox extends Object {
@@ -31,6 +35,7 @@ one sig Mail {
   drafts: Mailbox,
   trash: Mailbox,
   sent: Mailbox,
+  scheduled: Mailbox,
   -- user mailboxes
   var uboxes: set Mailbox,
 
@@ -42,11 +47,15 @@ one sig Mail {
   no (drafts & trash)
   no (drafts & sent)
   no (trash & sent)
+  no (inbox & scheduled)
+  no (drafts & scheduled)
+  no (trash & scheduled)
+  no (sent & scheduled)
 }
 
 -- added for convenience, to track the operators applied during 
 -- a system execution 
-enum Operator {CMB, DMB, CM, GM, SM, DM, MM, ET}
+enum Operator {CMB, DMB, CM, GM, SM, DM, MM, ET, SCM}
 
 -- Since we have only one Mail app, it is convenient to have
 -- a global shorthand for its system mailboxes
@@ -257,7 +266,57 @@ pred deleteMailbox [mb: Mailbox] {
   noMessageChange[Mailbox]
 }
 
-pred scheduleMessage[m: Message] {}
+pred scheduleMessage[m: Message, t: Int] {
+  -- pre-conditions
+  m.status = Fresh
+  m in Mail.drafts.messages
+  t > 0
+  no m.timeToSend
+  
+  -- post-conditions
+  m.status' = Scheduled
+  m.timeToSend' = t
+  Mail.drafts.messages' = Mail.drafts.messages - m
+  Mail.scheduled.messages' = Mail.scheduled.messages + m
+  Mail.op' = SCM
+
+  -- frame conditions
+  noStatusChange[Message - m]
+  noMessageChange[Mailbox - (Mail.drafts + Mail.scheduled)]
+  noUserboxChange
+}
+
+pred updateSchedule[m: Message] {
+  -- pre-conditions
+  m.status = Scheduled
+
+  -- post-conditions
+  m.timeToSend = 0 implies sendScheduled[m]
+  m.timeToSend > 0 implies m.timeToSend' = sub[m.timeToSend, 1]
+
+  -- no frame conditions, because this operation should
+  -- happen at the same time as other operators
+}
+
+pred sendScheduled[m: Message] {
+  -- pre-conditions
+  m.status = Scheduled
+  m.timeToSend = 0
+
+  -- post-conditions
+  m.status' = Active
+  m.timeToSend' = none
+  Mail.scheduled.messages' = Mail.scheduled.messages - m
+  Mail.inbox.messages' = Mail.inbox.messages + m
+  Mail.op' = SM
+
+  -- frame conditions
+  noStatusChange[Message - m]
+  noMessageChange[Mailbox - (Mail.scheduled + Mail.inbox)]
+  // noStatusChange[Message]
+  // noMessageChange[Mailbox]
+  noUserboxChange
+}
 
 -- noOp
 pred noOp {
@@ -296,25 +355,33 @@ pred Init {
 ------------------------
 
 pred Trans {
-  (some mb: Mailbox | createMailbox [mb])
-  or
-  (some mb: Mailbox | deleteMailbox [mb])
-  or
-  (some m: Message | createMessage [m])
-  or  
-  (some m: Message | getMessage [m])
-  or
-  (some m: Message | sendMessage [m])
-  or   
-  (some m: Message | deleteMessage [m])
-  or 
-  (some m: Message | some mb: Mailbox | moveMessage [m, mb])
-  or 
-  emptyTrash
-  or 
-  noOp
+  (
+    (some mb: Mailbox | createMailbox [mb])
+    or
+    (some mb: Mailbox | deleteMailbox [mb])
+    or
+    (some m: Message | createMessage [m])
+    or  
+    (some m: Message | getMessage [m])
+    or
+    (some m: Message | sendMessage [m])
+    or   
+    (some m: Message | deleteMessage [m])
+    or 
+    (some m: Message | some mb: Mailbox | moveMessage [m, mb])
+    or 
+    emptyTrash
+    or
+    (some m: Message | some t: Int | t > 0 and scheduleMessage [m, t])
+    or
+    (some m: Message | sendScheduled [m])
+    or 
+    noOp
+  ) and (
+    -- update the time and status of all schedule messages in the system
+    all m: Message | m.status = Scheduled implies updateSchedule[m]
+  )
 }
-
 
 ----------
 -- Traces
@@ -326,21 +393,44 @@ fact System {
   -- traces must satisfy initial state condition and the transition condition
   Init and always Trans
 }
-
-
 --run {} for 10
+
+-------------------
+-- Other Facts
+-------------------
+
+fact startFreshOrExternal {
+  -- The system starts with all messages being either Fresh or External
+  all m: Message | m.status = External or m.status = Fresh
+}
 
 ---------------------
 -- Sanity check runs
 ---------------------
 
-pred p1 {}
---run p1 for 1 but 8 Object
+-- Eventually there should at least one scheduled message
+pred p1 {
+  eventually(some m: Message | m.status = Scheduled)
+}
+run p1 for 5 but 11 Object
+
+-- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
+pred p2 {
+  eventually(some m: Message | m.status = Scheduled and some m: Message | createMessage[m])
+}
+// run p2 for 5 but 11 Object
+
+-- Eventually there should be 3 scheduled messages at the same time
+pred p3 {
+  eventually(#({m: Message | m.status = Scheduled}) = 3)
+}
+--run p3 for 5 but 11 Object
 
 --------------------
 -- Valid Properties
 --------------------
 
+-- Every scheduled message should eventually be sent
 assert v1 {}
 // check v1 for 5 but 11 Object
 
