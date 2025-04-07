@@ -337,7 +337,6 @@ pred Init {
   no Message.status & Purged
 
   -- The system mailboxes are all distinct
-  -- ?????????????????
   all mb1, mb2 : sboxes | mb1 != mb2 implies no mb1.messages & mb2.messages
 
   -- All mailboxes anywhere are empty
@@ -514,7 +513,7 @@ assert v1 {
 assert v2 {
   always (all mb1, mb2: Mailbox | mb1 != mb2 implies no mb1.messages & mb2.messages)
 }
-check v2 for 5 but 11 Object
+//check v2 for 5 but 11 Object
 
 -- Once active, a message can never return to the drafts mailbox
 assert v3{
@@ -532,13 +531,13 @@ assert v4 {
 assert v5 {
   always (all m: Message | moveMessage[m, Mail.inbox] implies once m in Mail.inbox.messages)
 }
-//check v5b for 5 but 11 Object
+check v5 for 5 but 11 Object
 
 -- All messages moved into the sent mailbox where once there
 assert v6 {
   always (all m: Message | moveMessage[m, Mail.sent] implies once m in Mail.sent.messages)
 }
-//check v6b for 5 but 11 Object
+//check v6 for 5 but 11 Object
 
 -- All messages in the drafts mailbox where once created
 assert v7 {
