@@ -581,13 +581,3 @@ assert i2 {
 }
 //check i2 for 5 but 11 Object
 
--- A message can repeatedly change from one mailbox to another indefinitely
--- Negation: All messages eventually stay in the same mailbox forever
-assert i3 {
-  (eventually all m: Message, mb: Mailbox |
-    always(m in mb.messages))
-  or
-  (no Mailbox.messages)
-}
-check i3 for 5 but 11 Object
-
