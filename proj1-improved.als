@@ -103,11 +103,11 @@ pred noUserboxChange {
   */
 pred createMessage [m: Message] {
   -- Preconditions
-  m.status = External
+  m.status = Fresh
 
   -- Postconditions
   Mail.drafts.messages' = Mail.drafts.messages + m
-  m.status' = Fresh
+  m.status' = Active
   Mail.op' = CM
 
   -- Frame conditions
@@ -124,7 +124,7 @@ pred moveMessage [m: Message, mb: Mailbox] {
   -- message should be in a mailbox
   some oldMb: Mailbox | m in oldMb.messages
   -- new mailbox must exist
-  mb in (Mail.uboxes + sboxes)
+  mb in (Mail.uboxes + sboxes - Mail.trash)
   -- new mailbox is not old mailbox
   all oldMb: Mailbox | m in oldMb.messages implies oldMb != mb
   
@@ -164,6 +164,7 @@ pred deleteMessage [m: Message] {
   Mail.op' = DM
 }
 
+
 /**
   * This predicate models sending a message from the drafts mailbox to the sent mailbox.
   * Arguments:
@@ -171,17 +172,15 @@ pred deleteMessage [m: Message] {
   */
 pred sendMessage [m: Message] {
   -- Preconditions
-  m.status = Fresh
   m in Mail.drafts.messages
 
   -- Postconditions
-  m.status' = Active
   Mail.drafts.messages' = Mail.drafts.messages - m
   Mail.sent.messages' = Mail.sent.messages + m
   Mail.op' = SM
 
   -- Frame conditions
-  noStatusChange[Message - m]
+  noStatusChange[Message]
   noMessageChange[Mailbox - (Mail.drafts + Mail.sent)]
   noUserboxChange
 }
@@ -260,15 +259,16 @@ pred deleteMailbox [mb: Mailbox] {
   Mail.uboxes' = Mail.uboxes - mb
   all msg : mb.messages | msg.status' = Purged
   Mail.op' = DMB
+  mb.messages' = none
 
   -- frame
   noStatusChange[Message - mb.messages]
-  noMessageChange[Mailbox]
+  noMessageChange[Mailbox - mb]
 }
 
 pred scheduleMessage[m: Message, t: Int] {
   -- pre-conditions
-  m.status = Fresh
+  m.status = Active
   m in Mail.drafts.messages
   t > 0
   no m.timeToSend
@@ -400,12 +400,7 @@ fact System {
 
 -- The system starts with all messages being either Fresh or External
 fact startFreshOrExternal {
-  all m: Message | m.status = External or no m.status
-}
-
--- This fact guarantees that the messages in the drafts mailbox are only Fresh
-fact onlyFreshInDrafts {
-  always (all m: Mail.drafts.messages | m.status = Fresh)
+  all m: Message | m.status = External or m.status = Fresh
 }
 
 fact onlyScheduledInScheduled {
@@ -440,7 +435,7 @@ pred p1 {
 
 -- Eventually some message is sent without never being scheduled
 pred p2 {
-  eventually(some m: Message | sendMessage[m])
+  eventually(some m: Message | m in Mail.sent.messages and historically (m.status != Scheduled))
 }
 //run p2 for 5 but 11 Object
 
@@ -493,12 +488,6 @@ pred p8 {
 }
 //run p8 for 5 but 11 Object
 
--- Eventually, all mailbox contain exactly 1 message
-pred p9 {
-  eventually (all mb: Mailbox | #(mb.messages) = 1)
-}
-//run p9 for 5 but 11 Object
-
 --------------------
 -- Valid Properties
 --------------------
@@ -515,12 +504,6 @@ assert v2 {
 }
 //check v2 for 5 but 11 Object
 
--- Once active, a message can never return to the drafts mailbox
-assert v3{
-  always (all m: Message | m.status = Active implies always m not in Mail.drafts.messages)
-}
-//check v3 for 5 but 11 Object
-
 -- No message can be in 2 states at the same time
 assert v4 {
   always (all m: Message | #(m.status) <= 1)
@@ -531,7 +514,7 @@ assert v4 {
 assert v5 {
   always (all m: Message | moveMessage[m, Mail.inbox] implies once m in Mail.inbox.messages)
 }
-check v5 for 5 but 11 Object
+//check v5 for 5 but 11 Object
 
 -- All messages moved into the sent mailbox where once there
 assert v6 {
@@ -545,18 +528,12 @@ assert v7 {
 }
 //check v7 for 5 but 11 Object
 
--- All messages without mailbox should be External
-assert v8 {
-  always (all m: Message | no mailBoxOf[m] implies m.status = External)
-}
-// check v8 for 5 but 11 Object
-
 -- No messages from the inbox can end up in sent and vice-versa
-assert v9 {
+assert v8 {
   always (all m: Message | m in Mail.inbox.messages implies m not in Mail.sent.messages)
   always (all m: Message | m in Mail.sent.messages implies m not in Mail.inbox.messages)
 }
-//check v9 for 5 but 11 Object
+check v8 for 5 but 11 Object
 
 ----------------------
 -- Invalid Properties
@@ -567,7 +544,7 @@ assert v9 {
 assert i1 {
   always (some m1, m2: Message | m1 != m2 implies m1.status = Scheduled and m2.status = Scheduled)
 }
-//check i1 for 5 but 11 Object
+check i1 for 5 but 11 Object
 
 -- A message can move from one user-created mailbox to another
 -- Negation: A message can never be moved from one user-created mailbox to another
@@ -576,5 +553,6 @@ assert i2 {
     u1 != u2 implies
     (m in u1.messages implies always m not in u2.messages)
 }
-//check i2 for 5 but 11 Object
+check i2 for 5 but 11 Object
+
 
