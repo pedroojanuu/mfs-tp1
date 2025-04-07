@@ -115,7 +115,7 @@ pred moveMessage [m: Message, mb: Mailbox] {
   -- message should be in a mailbox
   some oldMb: Mailbox | m in oldMb.messages
   -- new mailbox must exist
-  mb in (Mail.uboxes + sboxes)
+  mb in (Mail.uboxes + sboxes - Mail.trash)
   -- new mailbox is not old mailbox
   all oldMb: Mailbox | m in oldMb.messages implies oldMb != mb
   
@@ -416,7 +416,7 @@ assert v2 {
   -- Inactive messages are in no mailboxes at all
   always (all m: Message | m.status != Active implies no mb: Mailbox | m in mb.messages)
 }
-check v2 for 5 but 11 Object
+--check v2 for 5 but 11 Object
 
 -- Each of the user-created mailboxes differs from the predefined mailboxes
 assert v3 {
@@ -434,7 +434,7 @@ assert v4 {
 assert v5 {
   always all u: Mail.uboxes | once (historically no u.messages)
 }
-check v5 for 5 but 11 Object
+--check v5 for 5 but 11 Object
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
@@ -457,7 +457,7 @@ assert v8 {
 
 assert v9 {
   -- Every received message passes through the inbox
-  always (all m: Message | m.status = External implies (eventually some mb: Mailbox | m in mb.messages))
+  always (all m: Message | getMessage[m] implies after m in Mail.inbox.messages)
 }
 --check v9 for 5 but 11 Object
 
@@ -481,7 +481,7 @@ assert v12 {
   or
   always (no Mail.trash.messages)
 }
---check v12 for 5 but 11 Object
+check v12 for 5 but 11 Object
 
 -- To purge an active message one must first delete the message 
 -- or delete the mailbox it is in.
