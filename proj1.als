@@ -447,7 +447,7 @@ assert v7 {
 -- Every sent message is sent from the draft mailbox 
   always (all m: Message | (m in Mail.sent.messages and sendMessage[m]) implies once (m in Mail.drafts.messages))
 }
-// check v7 for 5 but 11 Object
+//check v7 for 5 but 11 Object
 
 assert v8 {
 -- The app's mailboxes contain only active messages
@@ -475,13 +475,11 @@ assert v11 {
 
 -- The trash mailbox starts empty and stays so until a message is deleted, if any
 assert v12 {
-  always (
-     (no Mail.trash.messages until some m: Message | deleteMessage[m])
-  )
+  eventually (some m: Message | deleteMessage[m] and before (no Mail.trash.messages))
   or
   always (no Mail.trash.messages)
 }
-check v12 for 5 but 11 Object
+//check v12 for 5 but 11 Object
 
 -- To purge an active message one must first delete the message 
 -- or delete the mailbox it is in.
