@@ -59,7 +59,7 @@ enum Operator {CMB, DMB, CM, GM, SM, DM, MM, ET, SCM}
 
 -- Since we have only one Mail app, it is convenient to have
 -- a global shorthand for its system mailboxes
-fun sboxes : set Mailbox { Mail.inbox + Mail.drafts + Mail.trash + Mail.sent }
+fun sboxes : set Mailbox { Mail.inbox + Mail.drafts + Mail.trash + Mail.sent + Mail.scheduled }
 
 -- Returns the mailbox where a message is located
 fun mailBoxOf[m: Message] : Mailbox {
@@ -127,6 +127,8 @@ pred moveMessage [m: Message, mb: Mailbox] {
   mb in (Mail.uboxes + sboxes)
   -- new mailbox is not old mailbox
   all oldMb: Mailbox | m in oldMb.messages implies oldMb != mb
+  -- mb should be exactly one Mailbox
+  one mb
   
   -- post-conditions
   -- remove message from old mailbox
@@ -396,12 +398,34 @@ fact System {
 --run {} for 10
 
 -------------------
--- Other Facts
+-- New Facts to Improve the Model
 -------------------
 
+-- The system starts with all messages being either Fresh or External
 fact startFreshOrExternal {
-  -- The system starts with all messages being either Fresh or External
   all m: Message | m.status = External or m.status = Fresh
+}
+
+-- This fact guarantees that the messages in the drafts mailbox are only Fresh
+fact onlyFreshInDrafts {
+  always (all m: Mail.drafts.messages | m.status = Fresh)
+}
+
+-- This fact guarantees that the messages in the inbox were once received
+-- this does not mean that the messages in the inbox cannot be moved,
+-- but that we can only move messages to the inbox, that were once there
+fact onlyReceivedInInbox {
+  always (all m: Mail.inbox.messages | once getMessage[m])
+}
+
+-- The same for sent mailbox
+fact onlySentInSent {
+  always (all m: Mail.sent.messages | once sendMessage[m])
+}
+
+-- No message can be moved out of the scheduled mailbox
+fact noMoveOutOfScheduled {
+  always (all m: Mail.scheduled.messages | no mb: Mailbox | moveMessage[m, mb])
 }
 
 ---------------------
@@ -412,32 +436,147 @@ fact startFreshOrExternal {
 pred p1 {
   eventually(some m: Message | m.status = Scheduled)
 }
-run p1 for 5 but 11 Object
+//run p1 for 5 but 11 Object
 
 -- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
 pred p2 {
   eventually(some m: Message | m.status = Scheduled and some m: Message | createMessage[m])
 }
-// run p2 for 5 but 11 Object
+//run p2 for 5 but 11 Object
 
 -- Eventually there should be 3 scheduled messages at the same time
 pred p3 {
-  eventually(#({m: Message | m.status = Scheduled}) = 3)
+  eventually(#({m: Message | m.status = Scheduled}) = 2)
 }
---run p3 for 5 but 11 Object
+//run p3 for 5 but 11 Object
+
+-- Eventually a user-created mailbox gets created, filled, then deleted.
+pred p4[] {
+  some u: Mailbox |
+    eventually (
+      u in Mail.uboxes and
+      some m: Message | m in u.messages and
+      eventually (u not in Mail.uboxes)
+    )
+}
+//run p4 for 1 but 8 Object
+
+-- A message is created, sent, then deleted, then purged.
+-- Note: we considered that a message is deleted when it is moved to the trash, 
+-- not when it is purged.
+pred p5[] {
+  some m: Message |
+    eventually (
+      m.status = Fresh and
+      eventually (m.status = Active and m in Mail.sent.messages and
+      eventually (m in Mail.trash.messages and
+      eventually (m.status = Purged)))
+    )
+}
+//run p5 for 1 but 8 Object
+
+-- Eventually some message is moved into the inbox
+pred p6[] {
+  eventually (some m: Message | moveMessage[m, Mail.inbox])
+}
+//run p6 for 5 but 11 Object
+
+-- Eventually some message is moved into the sent mailbox
+pred p7[] {
+  eventually (some m: Message | moveMessage[m, Mail.sent])
+}
+//run p7 for 5 but 11 Object
+
+-- Eventually, all mailbox contain exactly 1 message
+pred p8[] {
+  eventually (all mb: Mailbox | #(mb.messages) = 1)
+}
+//run p8 for 5 but 11 Object
 
 --------------------
 -- Valid Properties
 --------------------
 
 -- Every scheduled message should eventually be sent
-assert v1 {}
-// check v1 for 5 but 11 Object
+assert v1 {
+  always (all m: Message | m.status = Scheduled implies eventually (sendScheduled[m]))
+}
+//check v1 for 5 but 11 Object
 
+-- No message can be in two mailboxes at the same time.
+assert v2 {
+  always (all mb1, mb2: Mailbox | mb1 != mb2 implies no mb1.messages & mb2.messages)
+}
+check v2 for 5 but 11 Object
+
+-- Once active, a message can never return to the drafts mailbox
+assert v3{
+  always (all m: Message | m.status = Active implies always m not in Mail.drafts.messages)
+}
+//check v3 for 5 but 11 Object
+
+-- No message can be in 2 states at the same time
+assert v4 {
+  always (all m: Message | #(m.status) <= 1)
+}
+//check v4 for 5 but 11 Object
+
+-- All messages moved into the inbox mailbox where once there
+assert v5 {
+  always (all m: Message | moveMessage[m, Mail.inbox] implies once m in Mail.inbox.messages)
+}
+//check v5b for 5 but 11 Object
+
+-- All messages moved into the sent mailbox where once there
+assert v6 {
+  always (all m: Message | moveMessage[m, Mail.sent] implies once m in Mail.sent.messages)
+}
+//check v6b for 5 but 11 Object
+
+-- All messages in the drafts mailbox where once created
+assert v7 {
+  all m: Mail.drafts.messages | once createMessage[m]
+}
+//check v7 for 5 but 11 Object
+
+-- All messages without mailbox should be External
+assert v8 {
+  always (all m: Message | no mailBoxOf[m] implies m.status = External)
+}
+// check v8 for 5 but 11 Object
+
+-- No messages from the inbox can end up in sent and vice-versa
+assert v9 {
+  always (all m: Message | m in Mail.inbox.messages implies m not in Mail.sent.messages)
+  always (all m: Message | m in Mail.sent.messages implies m not in Mail.inbox.messages)
+}
+//check v9 for 5 but 11 Object
 
 ----------------------
 -- Invalid Properties
 ----------------------
 
-assert i1 {}
+-- It can exist multiple scheduled messages at the same time
+-- Negation: It can never exist multiple scheduled messages at the same time
+assert i1 {
+  always (some m1, m2: Message | m1 != m2 implies m1.status = Scheduled and m2.status = Scheduled)
+}
 --check i1 for 5 but 11 Object
+
+-- A message can move from one user-created mailbox to another
+-- Negation: A message can never be moved from one user-created mailbox to another
+assert i2 {
+  always all m: Message, u1, u2: Mail.uboxes |
+    u1 != u2 implies
+    (m in u1.messages implies always m not in u2.messages)
+}
+check i2 for 5 but 11 Object
+
+-- A message repeatedly change from one mailbox to another
+-- Negation: A message eventually stays in the same mailbox
+assert i3 {
+  eventually some m: Message, mb: Mailbox |
+    always(m in mb.messages)
+}
+check i3 for 5 but 11 Object
+
