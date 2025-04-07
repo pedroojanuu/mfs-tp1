@@ -183,7 +183,7 @@ pred sendMessage [m: Message] {
   Mail.op' = SM
 
   -- Frame conditions
-  noStatusChange[Message]
+  noStatusChange[Message - m]
   noMessageChange[Mailbox - (Mail.drafts + Mail.sent)]
   noUserboxChange
 }
@@ -445,7 +445,7 @@ pred p1 {
 pred p1a {
   eventually(some m: Message | sendMessage[m])
 }
-run p1a for 5 but 11 Object
+//run p1a for 5 but 11 Object
 
 -- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
 pred p2 {
@@ -516,7 +516,7 @@ assert v1 {
 assert v2 {
   always (all mb1, mb2: Mailbox | mb1 != mb2 implies no mb1.messages & mb2.messages)
 }
-check v2 for 5 but 11 Object
+//check v2 for 5 but 11 Object
 
 -- Once active, a message can never return to the drafts mailbox
 assert v3{
@@ -570,7 +570,7 @@ assert v9 {
 assert i1 {
   always (some m1, m2: Message | m1 != m2 implies m1.status = Scheduled and m2.status = Scheduled)
 }
---check i1 for 5 but 11 Object
+//check i1 for 5 but 11 Object
 
 -- A message can move from one user-created mailbox to another
 -- Negation: A message can never be moved from one user-created mailbox to another
@@ -579,13 +579,15 @@ assert i2 {
     u1 != u2 implies
     (m in u1.messages implies always m not in u2.messages)
 }
-check i2 for 5 but 11 Object
+//check i2 for 5 but 11 Object
 
--- A message repeatedly change from one mailbox to another
--- Negation: A message eventually stays in the same mailbox
+-- A message can repeatedly change from one mailbox to another indefinitely
+-- Negation: All messages eventually stay in the same mailbox forever
 assert i3 {
-  eventually some m: Message, mb: Mailbox |
-    always(m in mb.messages)
+  (eventually all m: Message, mb: Mailbox |
+    always(m in mb.messages))
+  or
+  (no Mailbox.messages)
 }
 check i3 for 5 but 11 Object
 

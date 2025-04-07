@@ -94,7 +94,7 @@ pred noUserboxChange {
   */
 pred createMessage [m: Message] {
   -- Preconditions
-  m.status = External
+  m.status = External or no m.status
 
   -- Postconditions
   Mail.drafts.messages' = Mail.drafts.messages + m
@@ -172,7 +172,7 @@ pred sendMessage [m: Message] {
   Mail.op' = SM
 
   -- Frame conditions
-  noStatusChange[Message]
+  noStatusChange[Message - m]
   noMessageChange[Mailbox - (Mail.drafts + Mail.sent)]
   noUserboxChange
 }
@@ -331,7 +331,6 @@ fact System {
 ---------------------
 -- Sanity check runs
 ---------------------
-
 pred p1 {
   -- Eventually a message becomes active
   eventually some m: Message | m.status = Active
