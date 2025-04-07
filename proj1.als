@@ -148,7 +148,7 @@ pred deleteMessage [m: Message] {
   Mail.trash.messages' = Mail.trash.messages + m
 
   -- frame conditions
-  noStatusChange[m]
+  noStatusChange[Message]
   noMessageChange [Mailbox - Mail.trash - mailBoxOf[m]]
   noUserboxChange
 
