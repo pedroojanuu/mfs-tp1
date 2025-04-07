@@ -309,12 +309,12 @@ pred sendScheduled[m: Message] {
   m.status' = Active
   m.timeToSend' = none
   Mail.scheduled.messages' = Mail.scheduled.messages - m
-  Mail.inbox.messages' = Mail.inbox.messages + m
+  Mail.sent.messages' = Mail.sent.messages + m
   Mail.op' = SM
 
   -- frame conditions
   noStatusChange[Message - m]
-  noMessageChange[Mailbox - (Mail.scheduled + Mail.inbox)]
+  noMessageChange[Mailbox - (Mail.scheduled + Mail.sent)]
   // noStatusChange[Message]
   // noMessageChange[Mailbox]
   noUserboxChange
@@ -403,12 +403,20 @@ fact System {
 
 -- The system starts with all messages being either Fresh or External
 fact startFreshOrExternal {
-  all m: Message | m.status = External or m.status = Fresh
+  all m: Message | m.status = External or no m.status
 }
 
 -- This fact guarantees that the messages in the drafts mailbox are only Fresh
 fact onlyFreshInDrafts {
   always (all m: Mail.drafts.messages | m.status = Fresh)
+}
+
+fact onlyScheduledInScheduled {
+  always (all m: Mail.scheduled.messages | m.status = Scheduled)
+}
+
+fact noScheduledOutsideScheduled {
+  always (all m: Message | m.status = Scheduled implies m in Mail.scheduled.messages)
 }
 
 -- This fact guarantees that the messages in the inbox were once received
@@ -420,12 +428,7 @@ fact onlyReceivedInInbox {
 
 -- The same for sent mailbox
 fact onlySentInSent {
-  always (all m: Mail.sent.messages | once sendMessage[m])
-}
-
--- No message can be moved out of the scheduled mailbox
-fact noMoveOutOfScheduled {
-  always (all m: Mail.scheduled.messages | no mb: Mailbox | moveMessage[m, mb])
+  always (all m: Mail.sent.messages | once (sendMessage[m] or sendScheduled[m]))
 }
 
 ---------------------
@@ -438,20 +441,26 @@ pred p1 {
 }
 //run p1 for 5 but 11 Object
 
+-- Eventually some message is sent without never being scheduled
+pred p1a {
+  eventually(some m: Message | sendMessage[m])
+}
+run p1a for 5 but 11 Object
+
 -- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
 pred p2 {
   eventually(some m: Message | m.status = Scheduled and some m: Message | createMessage[m])
 }
 //run p2 for 5 but 11 Object
 
--- Eventually there should be 3 scheduled messages at the same time
+-- Eventually there should be 2 scheduled messages at the same time
 pred p3 {
   eventually(#({m: Message | m.status = Scheduled}) = 2)
 }
 //run p3 for 5 but 11 Object
 
 -- Eventually a user-created mailbox gets created, filled, then deleted.
-pred p4[] {
+pred p4 {
   some u: Mailbox |
     eventually (
       u in Mail.uboxes and
@@ -464,7 +473,7 @@ pred p4[] {
 -- A message is created, sent, then deleted, then purged.
 -- Note: we considered that a message is deleted when it is moved to the trash, 
 -- not when it is purged.
-pred p5[] {
+pred p5 {
   some m: Message |
     eventually (
       m.status = Fresh and
@@ -476,19 +485,19 @@ pred p5[] {
 //run p5 for 1 but 8 Object
 
 -- Eventually some message is moved into the inbox
-pred p6[] {
+pred p6 {
   eventually (some m: Message | moveMessage[m, Mail.inbox])
 }
 //run p6 for 5 but 11 Object
 
 -- Eventually some message is moved into the sent mailbox
-pred p7[] {
+pred p7 {
   eventually (some m: Message | moveMessage[m, Mail.sent])
 }
 //run p7 for 5 but 11 Object
 
 -- Eventually, all mailbox contain exactly 1 message
-pred p8[] {
+pred p8 {
   eventually (all mb: Mailbox | #(mb.messages) = 1)
 }
 //run p8 for 5 but 11 Object
@@ -499,7 +508,7 @@ pred p8[] {
 
 -- Every scheduled message should eventually be sent
 assert v1 {
-  always (all m: Message | m.status = Scheduled implies eventually (sendScheduled[m]))
+  always (all m: Message | m.status = Scheduled implies eventually (m in Mail.sent.messages))
 }
 //check v1 for 5 but 11 Object
 
