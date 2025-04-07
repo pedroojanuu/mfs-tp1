@@ -127,14 +127,12 @@ pred moveMessage [m: Message, mb: Mailbox] {
   mb in (Mail.uboxes + sboxes)
   -- new mailbox is not old mailbox
   all oldMb: Mailbox | m in oldMb.messages implies oldMb != mb
-  -- mb should be exactly one Mailbox
-  one mb
   
   -- post-conditions
   -- remove message from old mailbox
-  all oldMb: Mailbox | m in oldMb.messages implies m not in oldMb.messages'
+  all oldMb: Mailbox | m in oldMb.messages implies oldMb.messages' = oldMb.messages - m
   -- add message to new mailbox
-  m in mb.messages'
+  mb.messages' = mb.messages + m
   
   -- frame conditions
   noStatusChange[Message]
@@ -516,7 +514,7 @@ assert v1 {
 assert v2 {
   always (all mb1, mb2: Mailbox | mb1 != mb2 implies no mb1.messages & mb2.messages)
 }
-//check v2 for 5 but 11 Object
+check v2 for 5 but 11 Object
 
 -- Once active, a message can never return to the drafts mailbox
 assert v3{

@@ -94,11 +94,11 @@ pred noUserboxChange {
   */
 pred createMessage [m: Message] {
   -- Preconditions
-  m.status = External or no m.status
+  m.status = Fresh
 
   -- Postconditions
   Mail.drafts.messages' = Mail.drafts.messages + m
-  m.status' = Fresh
+  m.status' = Active
   Mail.op' = CM
 
   -- Frame conditions
@@ -121,9 +121,9 @@ pred moveMessage [m: Message, mb: Mailbox] {
   
   -- post-conditions
   -- remove message from old mailbox
-  all oldMb: Mailbox | m in oldMb.messages implies m not in oldMb.messages'
+  all oldMb: Mailbox | m in oldMb.messages implies oldMb.messages' = oldMb.messages - m
   -- add message to new mailbox
-  m in mb.messages'
+  mb.messages' = mb.messages + m
   
   -- frame conditions
   noStatusChange[Message]
@@ -162,17 +162,15 @@ pred deleteMessage [m: Message] {
   */
 pred sendMessage [m: Message] {
   -- Preconditions
-  m.status = Fresh
   m in Mail.drafts.messages
 
   -- Postconditions
-  m.status' = Active
   Mail.drafts.messages' = Mail.drafts.messages - m
   Mail.sent.messages' = Mail.sent.messages + m
   Mail.op' = SM
 
   -- Frame conditions
-  noStatusChange[Message - m]
+  noStatusChange[Message]
   noMessageChange[Mailbox - (Mail.drafts + Mail.sent)]
   noUserboxChange
 }
@@ -251,10 +249,11 @@ pred deleteMailbox [mb: Mailbox] {
   Mail.uboxes' = Mail.uboxes - mb
   all msg : mb.messages | msg.status' = Purged
   Mail.op' = DMB
+  mb.messages' = none
 
   -- frame
   noStatusChange[Message - mb.messages]
-  noMessageChange[Mailbox]
+  noMessageChange[Mailbox - mb]
 }
 
 -- noOp
@@ -325,7 +324,6 @@ fact System {
   Init and always Trans
 }
 
-
 --run {} for 10
 
 ---------------------
@@ -335,32 +333,32 @@ pred p1 {
   -- Eventually a message becomes active
   eventually some m: Message | m.status = Active
 }
---run p1 for 1 but 8 Object
+//run p1 for 1 but 8 Object
 
 pred p2 {
   -- The inbox contains more than one message at some point
   eventually #Mail.inbox.messages > 1
 }
---run p2 for 1 but 8 Object
+//run p2 for 1 but 8 Object
 
 pred p3 {
   -- The trash mailbox eventually contains messages and
   -- becomes empty some time later
   eventually (some Mail.trash.messages and after eventually no Mail.trash.messages)
 }
---run p3 for 1 but 8 Object
+//run p3 for 1 but 8 Object
 
 -- Eventually some message in the drafts mailbox (it is already there) moves to the sent mailbox
 pred p4 {
   eventually some m: Message | m in Mail.drafts.messages and after (m in Mail.sent.messages)
 }
---run p4 for 1 but 8 Object
+//run p4 for 1 but 8 Object
 
 -- Eventually there is a user mailbox with messages in it
 pred p5 {
   eventually (some Mail.uboxes.messages)
 }
---run p5 for 1 but 8 Object 
+//run p5 for 1 but 8 Object 
 
 -- Eventually the inbox gets two messages in a row from outside
 /*
@@ -373,13 +371,13 @@ pred p6 {
   eventually some m1: Message, m2: Message | 
     m1 != m2 and getMessage[m1] and after (getMessage[m2])
 }
-// run p6 for 1 but 8 Object
+//run p6 for 1 but 8 Object
 
 pred p7 {
   -- Eventually some user mailbox gets deleted
   eventually some m: Mailbox | m in Mail.uboxes and after m not in Mail.uboxes
 }
-// run p7 for 1 but 8 Object
+//run p7 for 1 but 8 Object
 
 pred p8 {
   -- Eventually the inbox has messages
@@ -387,20 +385,20 @@ pred p8 {
   -- Every message in the inbox at any point is eventually removed 
   always all m: Message | m in Mail.inbox.messages implies eventually m not in Mail.inbox.messages
 }
-// run p8 for 1 but 8 Object
+//run p8 for 1 but 8 Object
 
 pred p9 {
   -- The trash mail box is emptied of its messages eventually
   eventually no Mail.trash.messages
 }
-// run p9 for 1 but 8 Object
+//run p9 for 1 but 8 Object
 
 pred p10 {
   -- Eventually an external message arrives and 
   -- after that nothing happens anymore
   eventually (some m: Message | m.status = External and after always noOp)
 }
-// run p10 for 1 but 8 Object
+//run p10 for 1 but 8 Object
 
 
 
@@ -412,14 +410,14 @@ assert v1 {
   -- Every active message is in one of the app's mailboxes 
   always (all m: Message | m.status = Active implies some mb: Mailbox | m in mb.messages)
 }
-// check v1 for 5 but 11 Object
+//check v1 for 5 but 11 Object
 
  
 assert v2 {
   -- Inactive messages are in no mailboxes at all
   always (all m: Message | m.status != Active implies no mb: Mailbox | m in mb.messages)
 }
-// check v2 for 5 but 11 Object
+check v2 for 5 but 11 Object
 
 -- Each of the user-created mailboxes differs from the predefined mailboxes
 assert v3 {
@@ -437,7 +435,7 @@ assert v4 {
 assert v5 {
   always all u: Mail.uboxes | once (historically no u.messages)
 }
---check v5 for 5 but 11 Object
+check v5 for 5 but 11 Object
 
 assert v6 {
 -- User-created mailboxes stay in the system indefinitely or until they are deleted.
