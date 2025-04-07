@@ -440,25 +440,25 @@ pred p1 {
 //run p1 for 5 but 11 Object
 
 -- Eventually some message is sent without never being scheduled
-pred p1a {
-  eventually(some m: Message | sendMessage[m])
-}
-//run p1a for 5 but 11 Object
-
--- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
 pred p2 {
-  eventually(some m: Message | m.status = Scheduled and some m: Message | createMessage[m])
+  eventually(some m: Message | sendMessage[m])
 }
 //run p2 for 5 but 11 Object
 
--- Eventually there should be 2 scheduled messages at the same time
+-- Eventually some message should be scheduled and between it being secheduled and sent another message should be created
 pred p3 {
-  eventually(#({m: Message | m.status = Scheduled}) = 2)
+  eventually(some m: Message | m.status = Scheduled and some m: Message | createMessage[m])
 }
 //run p3 for 5 but 11 Object
 
--- Eventually a user-created mailbox gets created, filled, then deleted.
+-- Eventually there should be 2 scheduled messages at the same time
 pred p4 {
+  eventually(#({m: Message | m.status = Scheduled}) = 2)
+}
+//run p4 for 5 but 11 Object
+
+-- Eventually a user-created mailbox gets created, filled, then deleted.
+pred p5 {
   some u: Mailbox |
     eventually (
       u in Mail.uboxes and
@@ -466,12 +466,12 @@ pred p4 {
       eventually (u not in Mail.uboxes)
     )
 }
-//run p4 for 1 but 8 Object
+//run p5 for 1 but 8 Object
 
 -- A message is created, sent, then deleted, then purged.
 -- Note: we considered that a message is deleted when it is moved to the trash, 
 -- not when it is purged.
-pred p5 {
+pred p6 {
   some m: Message |
     eventually (
       m.status = Fresh and
@@ -480,25 +480,25 @@ pred p5 {
       eventually (m.status = Purged)))
     )
 }
-//run p5 for 1 but 8 Object
+//run p6 for 1 but 8 Object
 
 -- Eventually some message is moved into the inbox
-pred p6 {
-  eventually (some m: Message | moveMessage[m, Mail.inbox])
-}
-//run p6 for 5 but 11 Object
-
--- Eventually some message is moved into the sent mailbox
 pred p7 {
-  eventually (some m: Message | moveMessage[m, Mail.sent])
+  eventually (some m: Message | moveMessage[m, Mail.inbox])
 }
 //run p7 for 5 but 11 Object
 
--- Eventually, all mailbox contain exactly 1 message
+-- Eventually some message is moved into the sent mailbox
 pred p8 {
-  eventually (all mb: Mailbox | #(mb.messages) = 1)
+  eventually (some m: Message | moveMessage[m, Mail.sent])
 }
 //run p8 for 5 but 11 Object
+
+-- Eventually, all mailbox contain exactly 1 message
+pred p9 {
+  eventually (all mb: Mailbox | #(mb.messages) = 1)
+}
+//run p9 for 5 but 11 Object
 
 --------------------
 -- Valid Properties

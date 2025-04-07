@@ -275,7 +275,6 @@ pred Init {
   no Message.status & Purged
 
   -- The system mailboxes are all distinct
-  -- ?????????????????
   all mb1, mb2 : sboxes | mb1 != mb2 implies no mb1.messages & mb2.messages
 
   -- All mailboxes anywhere are empty
