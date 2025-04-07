@@ -152,13 +152,13 @@ pred deleteMessage [m: Message] {
   
   -- post-conditions
   -- remove message from old mailbox
-  all oldMb: Mailbox | m in oldMb.messages implies m not in oldMb.messages'
+  all oldMb: Mailbox | m in oldMb.messages implies oldMb.messages' = oldMb.messages - m
   -- add message to trash
-  m in Mail.trash.messages'
+  Mail.trash.messages' = Mail.trash.messages + m
 
   -- frame conditions
   noStatusChange[m]
-  noMessageChange [Mailbox - Mail.trash]
+  noMessageChange [Mailbox - Mail.trash - mailBoxOf[m]]
   noUserboxChange
 
   Mail.op' = DM
